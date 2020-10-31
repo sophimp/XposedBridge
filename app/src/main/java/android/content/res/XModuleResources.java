@@ -3,6 +3,9 @@ package android.content.res;
 import android.app.AndroidAppHelper;
 import android.util.DisplayMetrics;
 
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+
 import de.robv.android.xposed.IXposedHookInitPackageResources;
 import de.robv.android.xposed.IXposedHookZygoteInit;
 import de.robv.android.xposed.IXposedHookZygoteInit.StartupParam;
@@ -33,8 +36,24 @@ public class XModuleResources extends Resources {
 			throw new IllegalArgumentException("path must not be null");
 
 		AssetManager assets = new AssetManager();
-		assets.addAssetPath(path);
+		try {
+			Method setApkAssets = assets.getClass().getDeclaredMethod("setApkAssets");
+			setApkAssets.setAccessible(true);
 
+			Object[] apkAssets = new Object[1];
+			Class apkAssetsClz = Class.forName("android.content.res.ApkAssets");
+			Method loadFromPath = apkAssetsClz.getDeclaredMethod("loadFromPath");
+			apkAssets[0] = loadFromPath.invoke(null, path);
+			setApkAssets.invoke(assets,apkAssets);
+		}  catch (IllegalAccessException e) {
+			e.printStackTrace();
+		} catch (InvocationTargetException e) {
+			e.printStackTrace();
+		} catch (ClassNotFoundException e) {
+			e.printStackTrace();
+		} catch (NoSuchMethodException e) {
+			e.printStackTrace();
+		}
 		XModuleResources res;
 		if (origRes != null)
 			res = new XModuleResources(assets, origRes.getDisplayMetrics(),	origRes.getConfiguration());
